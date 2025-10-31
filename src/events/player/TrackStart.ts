@@ -84,6 +84,58 @@ export default class TrackStart extends Event {
 			player.set('messageId', message.id);
 			createCollector(message, player, track, embed, this.client, locale);
 		}
+		// 啟動進度條自動更新
+		if (player.get('progressTimer')) {
+			clearInterval(player.get('progressTimer'));
+		}
+		const updateProgress = async () => {
+			try {
+				const msgId = player.get('messageId');
+				if (!msgId) return;
+				const msg = await channel.messages.fetch(msgId).catch(() => null) as any;
+				if (!msg) return;
+				const npTrack = player.queue.current;
+				if (!npTrack) return;
+				const pos = player.position;
+				const dur = npTrack.info.duration;
+				const bar = this.client.utils.progressBar(pos, dur, 20);
+				const embed = this.client
+					.embed()
+					.setAuthor({
+						name: T(locale, 'player.trackStart.now_playing'),
+						iconURL: this.client.config.icons[npTrack.info.sourceName] ?? this.client.user?.displayAvatarURL({ extension: 'png' }),
+					})
+					.setColor(this.client.color.main)
+					.setDescription(`**[${npTrack.info.title}](${npTrack.info.uri})**`)
+					.setFooter({
+						text: T(locale, 'player.trackStart.requested_by', {
+							user: (npTrack.requester as Requester).username,
+						}),
+						iconURL: (npTrack.requester as Requester).avatarURL,
+					})
+					.setThumbnail(npTrack.info.artworkUrl)
+					.addFields(
+						{
+							name: T(locale, 'player.trackStart.duration'),
+							value: npTrack.info.isStream ? 'LIVE' : this.client.utils.formatTime(npTrack.info.duration),
+							inline: true,
+						},
+						{
+							name: T(locale, 'player.trackStart.author'),
+							value: npTrack.info.author,
+							inline: true,
+						},
+					)
+					.addFields({
+						name: '\u200b',
+						value: `\`${this.client.utils.formatTime(pos)} / ${this.client.utils.formatTime(dur)}\`\n${bar}`,
+					})
+					.setTimestamp();
+				await msg.edit({ embeds: [embed] });
+			} catch {}
+		};
+		const timer = setInterval(updateProgress, 5000);
+		player.set('progressTimer', timer);
 	}
 }
 

@@ -31,6 +31,10 @@ export default class TrackEnd extends Event {
 		message.delete().catch(() => {
 			null;
 		});
+		// 停止進度條自動更新
+		const timer = player.get('progressTimer');
+		if (timer) clearInterval(timer as NodeJS.Timeout);
+		player.set('progressTimer', null);
 	}
 }
 

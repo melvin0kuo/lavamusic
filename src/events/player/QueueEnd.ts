@@ -3,6 +3,8 @@ import type { Player, Track, TrackStartEvent } from 'lavalink-client';
 import { Event, type Lavamusic } from '../../structures/index';
 import { updateSetup } from '../../utils/SetupSystem';
 
+import { autoPlayFunction } from '../../utils/functions/player';
+
 export default class QueueEnd extends Event {
 	constructor(client: Lavamusic, file: string) {
 		super(client, file, {
@@ -31,6 +33,21 @@ export default class QueueEnd extends Event {
 			await message.edit({ components: [] }).catch(() => {
 				null;
 			});
+		}
+		// 停止進度條自動更新
+		const timer = player.get('progressTimer');
+		if (timer) clearInterval(timer as NodeJS.Timeout);
+		player.set('progressTimer', null);
+
+		// autoplay 類似曲目功能
+		const autoplay = player.get('autoplay');
+		const lastTrack = player.queue.previous?.[player.queue.previous.length - 1];
+		if (autoplay && lastTrack) {
+			await autoPlayFunction(player, lastTrack);
+			// 若有新曲目已加入 queue，則自動播放
+			if (player.queue.tracks.length > 0 && !player.playing && !player.paused) {
+				player.play();
+			}
 		}
 	}
 }
